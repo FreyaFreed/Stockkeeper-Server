@@ -3,3 +3,5 @@
 .settings/**
 .project
 stockkeeper.db
+bin
+/target/
