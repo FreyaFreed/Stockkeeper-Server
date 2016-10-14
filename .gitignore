@@ -5,3 +5,5 @@
 stockkeeper.db
 bin
 /target/
+Stockkeeper.log
+Stockkeeper.log.*
