@@ -443,16 +443,14 @@ public class StockkeeperSQL {
 	public boolean verifyUser(UUID playerUUID, String password) {
 		boolean verified = false;
 		String query = "SELECT count(userid) AS verify, password FROM user WHERE userid = ? AND password = ?";
-		String passDB = "";
+		
 		try
 		{
 		PreparedStatement verifyUser = con.prepareStatement(query);
 		
 			verifyUser.setString(1, playerUUID.toString());
 			verifyUser.setString(2, password);
-			ResultSet result =  verifyUser.executeQuery();
-			passDB = result.getString("password");
-			LOG.log(Level.WARNING,passDB + " and " + password);
+			ResultSet result =  verifyUser.executeQuery();			
 			if(result.getInt("verify") > 0)
 				verified = true;
 			else
@@ -461,15 +459,8 @@ public class StockkeeperSQL {
 		catch(SQLException e){
 			LOG.log(Level.WARNING, "" ,e);
 		}
-		if(passDB == password)
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-		//return verified;
+		
+		return verified;
 	}
 
 }
