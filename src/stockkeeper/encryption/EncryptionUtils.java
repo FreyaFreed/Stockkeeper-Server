@@ -89,7 +89,7 @@ public class EncryptionUtils {
 		KeyPairGenerator kpg = null;
 		try {
 			kpg = KeyPairGenerator.getInstance("RSA");
-			kpg.initialize(5120); // 512 is the keysize.
+			kpg.initialize(3072); // 512 is the keysize.
 
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
