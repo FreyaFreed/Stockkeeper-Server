@@ -32,6 +32,7 @@ import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
@@ -81,11 +82,24 @@ public class StockkeeperSrv {
 
 	public static void main(String[] args) {
 		
-		LOG.setLevel(Level.FINE);
+		
+		 FileHandler fh;
+		try {
+			fh = new FileHandler("Stockkeeper.log");
+			 LOG.addHandler(fh);
+		} catch (SecurityException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}  
+	    // LOG.addHandler(fh);
+		LOG.setLevel(Level.FINE);		
 		//Generate keypair to be used for sharing secrets
 		keys = EncryptionUtils.generateKeypair();
 		//Create a map that holds a secret for every client
-				
+		SQL.createTables();		
 		
 		KeyExchangeThread keyExchange = new KeyExchangeThread(keys, secretKeys);
 		keyExchange.start();
@@ -301,11 +315,8 @@ public class StockkeeperSrv {
 				LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
 			} catch (IOException e) {			
 				LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
-			}
-			
-						
+			}		
 		}
-		
-		
-	}	
+	}
+	
 }
