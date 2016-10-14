@@ -1,12 +1,17 @@
 package stockkeeper.sql;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -116,12 +121,12 @@ public class StockkeeperSQL {
 		Connection con = null;
 	    try {
 	    	org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
-	        config.setJournalMode(JournalMode.MEMORY);
+	        config.setJournalMode(JournalMode.MEMORY);	        
 	        con = DriverManager.getConnection("jdbc:sqlite:stockkeeper.db");
 	        config.apply(con);
 	      Class.forName("org.sqlite.JDBC");
 	      LOG.log(Level.INFO, "Successfully connected to" + con.getMetaData().getDatabaseProductName().toString() );
-	     
+	      
 	      
 	    } catch ( Exception e ) {
 	    	LOG.log(Level.SEVERE, "" ,e);
@@ -129,6 +134,32 @@ public class StockkeeperSQL {
 	    }
 	    
 	    return con;
+	}
+	public void createTables()
+	{		
+		try {			
+			ClassLoader cl = StockkeeperSQL.class.getClassLoader();			
+			InputStreamReader reader = new InputStreamReader(cl.getResourceAsStream("Databaseschema"));
+			String statement = "";
+			int i;
+			while((i= reader.read())!=-1)
+			{
+				char c = (char)i;
+				statement += c;
+			}			
+			for(String query : statement.split(";"))
+			{
+				//query = query.trim();				
+				//query.replaceAll("[\n\r]", "");
+				PreparedStatement createTables = con.prepareStatement(query +";");				
+				createTables.executeUpdate();				
+				createTables.close();			}
+		
+		} catch (IOException e) {
+			LOG.log(Level.WARNING, "" ,e);
+		} catch (SQLException e) {
+			LOG.log(Level.WARNING, "" ,e);
+		} 
 	}
 
 	public boolean hasInviteLevel(UUID playerUUID, int level) {
@@ -411,7 +442,8 @@ public class StockkeeperSQL {
 
 	public boolean verifyUser(UUID playerUUID, String password) {
 		boolean verified = false;
-		String query = "SELECT count(userid) AS verify FROM user WHERE userid = ? AND password = ?";
+		String query = "SELECT count(userid) AS verify, password FROM user WHERE userid = ? AND password = ?";
+		String passDB = "";
 		try
 		{
 		PreparedStatement verifyUser = con.prepareStatement(query);
@@ -419,6 +451,8 @@ public class StockkeeperSQL {
 			verifyUser.setString(1, playerUUID.toString());
 			verifyUser.setString(2, password);
 			ResultSet result =  verifyUser.executeQuery();
+			passDB = result.getString("password");
+			LOG.log(Level.WARNING,passDB + " and " + password);
 			if(result.getInt("verify") > 0)
 				verified = true;
 			else
@@ -427,7 +461,15 @@ public class StockkeeperSQL {
 		catch(SQLException e){
 			LOG.log(Level.WARNING, "" ,e);
 		}
-		return verified;
+		if(passDB == password)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+		//return verified;
 	}
 
 }

@@ -1,40 +1,33 @@
-CREATE TABLE sqlite_sequence(name,seq);
-CREATE VIEW "SELECT_ALL" AS SELECT * FROM stack;
-CREATE TABLE user (
+CREATE TABLE IF NOT EXISTS user (
     "userid" TEXT NOT NULL,
     "password" TEXT NOT NULL
 , "userlevel" INTEGER  NOT NULL  DEFAULT (0));
-CREATE TABLE chest (
+CREATE TABLE IF NOT EXISTS chest (
     "chestid" TEXT NOT NULL,
     "x" INTEGER NOT NULL,
     "y" INTEGER NOT NULL,
     "z" INTEGER NOT NULL,
     "isDoubleChest" INTEGER
-, "ip" TEXT);
-CREATE TABLE user_group (
+, "ip" TEXT);CREATE TABLE IF NOT EXISTS user_group (
     "userid" TEXT NOT NULL,
     "groupname" TEXT NOT NULL
 , "grouplevel" INTEGER);
-CREATE TABLE "group" (
+CREATE TABLE IF NOT EXISTS "group" (
     "name" TEXT PRIMARY KEY NOT NULL
 );
-;
-CREATE TABLE "groups" (
+CREATE TABLE IF NOT EXISTS "groups" (
     "name" TEXT PRIMARY KEY NOT NULL
 );
-;
-CREATE UNIQUE INDEX "PK" on chest (chestid ASC);
-CREATE TABLE "chest_group" (
+CREATE UNIQUE INDEX IF NOT EXISTS "PK" on chest (chestid ASC);
+CREATE TABLE IF NOT EXISTS "chest_group" (
     "chestid" TEXT NOT NULL,
     "groupid" TEXT NOT NULL,
     CONSTRAINT chest_groupid PRIMARY KEY(chestid, groupid)
 );
-;
-CREATE TABLE stack (
+CREATE TABLE IF NOT EXISTS stack (
     "slot" INTEGER NOT NULL,
     "chestid" TEXT NOT NULL,
     "itemName" TEXT COLLATE NOCASE,
     "stackSize" INTEGER,
     CONSTRAINT stackid PRIMARY KEY (slot, chestid)
 );
-;
