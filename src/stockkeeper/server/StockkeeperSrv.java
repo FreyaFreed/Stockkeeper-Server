@@ -292,7 +292,7 @@ public class StockkeeperSrv {
 		{
 			SQL.registerUser(message.playerUUID, message.password, activeInvites.get(message.inviteCode));
 		}
-		else if(message.inviteCode == masterCode)
+		else if(message.inviteCode.equals(masterCode))
 		{
 			SQL.registerUser(message.playerUUID, message.password, 5);			
 		}

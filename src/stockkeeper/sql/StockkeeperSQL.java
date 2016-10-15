@@ -209,7 +209,9 @@ public class StockkeeperSQL {
 		int rowsUpdated =  insertUser.executeUpdate();
 		insertUser.close();
 		success = (rowsUpdated != 0);
-		System.out.println(success);
+		
+		if(success)
+			LOG.info("Succesfully registered user");
 		
 		}
 		catch(SQLException e)
