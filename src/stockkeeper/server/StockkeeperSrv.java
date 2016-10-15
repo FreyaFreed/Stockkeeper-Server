@@ -55,12 +55,16 @@ import stockkeeper.network.EncryptedMessage;
 import stockkeeper.network.FindItemMessage;
 import stockkeeper.network.FindItemReturnMessage;
 import stockkeeper.network.GroupChangedMessage;
+import stockkeeper.network.GroupChangedReturn;
 import stockkeeper.network.InvalidPasswordMessage;
 import stockkeeper.network.InviteGroupMessage;
+import stockkeeper.network.InviteGroupReturnMessage;
 import stockkeeper.network.InviteMessage;
 import stockkeeper.network.InviteReturnMessage;
 import stockkeeper.network.MakeGroupMessage;
+import stockkeeper.network.MakeGroupReturnMessage;
 import stockkeeper.network.RegisterMessage;
+import stockkeeper.network.RegisterReturnMessage;
 import stockkeeper.network.StockKeeperMessage;
 import stockkeeper.network.StockKeeperMessage.MessageType;
 import stockkeeper.network.StockkeeperReturnMessage;
@@ -175,17 +179,17 @@ public class StockkeeperSrv {
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
 		case REGISTER:
-			handleRegistration((RegisterMessage)message);
+			handleRegistration((RegisterMessage)message, returnMessage);
 			break;
 		case MAKEGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleMakeGroup((MakeGroupMessage)message);
+				handleMakeGroup((MakeGroupMessage)message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
 		case INVITEGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleInviteGroup((InviteGroupMessage)message);
+				handleInviteGroup((InviteGroupMessage)message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 		case CHECKGROUP:
@@ -196,7 +200,7 @@ public class StockkeeperSrv {
 			break;
 		case GROUPCHANGED:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleGroupChanged((GroupChangedMessage)message);
+				handleGroupChanged((GroupChangedMessage)message, returnMessage);
 			break;
 		case FINDITEM:
 			if(SQL.verifyUser(message.playerUUID, message.password))
@@ -231,8 +235,14 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleGroupChanged(GroupChangedMessage message) {
+	private static void handleGroupChanged(GroupChangedMessage message, ObjectOutputStream returnMessage) {
 		SQL.changeChestGroup(message);
+		try {
+			returnMessage.writeObject(new EncryptedMessage(new GroupChangedReturn(), message.playerUUID, secretKeys.get(message.playerUUID)));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
+		}
 		
 	}
 	private static void handleCheckGroup(checkChestGroupMessage message, ObjectOutputStream returnMessage) {
@@ -270,31 +280,64 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleInviteGroup(InviteGroupMessage message) {
+	private static void handleInviteGroup(InviteGroupMessage message, ObjectOutputStream returnMessage) {
 		int grouplevel =SQL.getGroupLevel(message);
 		if(grouplevel >= INVITEGROUP_LEVEL && grouplevel > message.grouplevel)
 		{
 			SQL.addToGroup(message);
+			try {
+				returnMessage.writeObject(new EncryptedMessage(new InviteGroupReturnMessage(), message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		
 	}
-	private static void handleMakeGroup(MakeGroupMessage message) {
+	private static void handleMakeGroup(MakeGroupMessage message, ObjectOutputStream returnMessage) {
 		if(SQL.getUserLevel(message.playerUUID) >= MAKEGROUP_LEVEL)
 		{
 			SQL.makeGroup(message);
+			try {
+				returnMessage.writeObject(new EncryptedMessage(new MakeGroupReturnMessage(), message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}			
 			
 		}
 		
 	}
-	private static void handleRegistration(RegisterMessage message) {
+	private static void handleRegistration(RegisterMessage message, ObjectOutputStream returnMessage) {
 		String masterCode = "6d02c658-2806-4b70-9e2d-be1cfed7329e";
 		if(activeInvites.containsKey(message.inviteCode))
 		{
 			SQL.registerUser(message.playerUUID, message.password, activeInvites.get(message.inviteCode));
+			try {
+				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage("", true), message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		else if(message.inviteCode.equals(masterCode))
 		{
-			SQL.registerUser(message.playerUUID, message.password, 5);			
+			SQL.registerUser(message.playerUUID, message.password, 5);	
+			try {
+				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage("", true), message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		else
+		{
+			try {
+				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage("", false), message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		
 	}
