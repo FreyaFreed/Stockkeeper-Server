@@ -13,6 +13,8 @@ public class StockkeeperReturnMessage implements Serializable {
 		super();
 		this.messageType = messageType;
 	}
+	boolean success;
+	public String message;
 	
 
 }

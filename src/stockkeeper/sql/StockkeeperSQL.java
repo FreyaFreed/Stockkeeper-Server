@@ -17,6 +17,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,12 +32,14 @@ import org.json.JSONObject;
 import org.sqlite.SQLiteConnection;
 import org.sqlite.SQLiteDataSource;
 
+import stockkeeper.data.Position;
 import stockkeeper.data.Stack;
 import stockkeeper.network.ChestContentsMessage;
 import stockkeeper.network.CountMessage;
 import stockkeeper.network.GroupChangedMessage;
 import stockkeeper.network.InviteGroupMessage;
 import stockkeeper.network.MakeGroupMessage;
+import stockkeeper.network.StockKeeperMessage;
 import stockkeeper.server.StockkeeperSrv;
 
 import com.sun.rowset.CachedRowSetImpl;
@@ -50,17 +53,17 @@ public class StockkeeperSQL {
 		con = getConnection();
 	}
 	
-	public int countItem(CountMessage message)
+	public int countItem(StockKeeperMessage message)
 	{
+		String itemName = (String)message.getField("itemName");
 		try
 		{
 			//Connection con = getConnection();	
 			String query = "SELECT SUM(stackSize) AS total FROM stack  INNER JOIN chest ON stack.chestid = chest.chestid WHERE itemName = ? AND ip = ?";
 			PreparedStatement count = con.prepareStatement(query);
-			count.setString(1, message.itemName);
+			count.setString(1, itemName);
 			count.setString(2, message.serverIP);
-			int result = count.executeQuery().getInt("total");
-			System.out.println(result);
+			int result = count.executeQuery().getInt("total");			
 			return result;
 			
 		}
@@ -71,19 +74,21 @@ public class StockkeeperSQL {
 		}
 	}
 	
-	public void updateChest(ChestContentsMessage chest)
+	public void updateChest(StockKeeperMessage message)
 	{
 		
+		List<Stack> stacks = (List<Stack>)message.getField("stacks");
+		Position chest = (Position)message.getField("chest");
 		try
 		{
 			int i = 0;
-			for(Stack stack :chest.stacks)
+			for(Stack stack : stacks)
 			{
 				
 				String query = "REPLACE INTO stack(slot, chestid, itemName, stackSize) VALUES (?,?,?,?)";
 				PreparedStatement insertStacks = con.prepareStatement(query);
 				insertStacks.setInt(1, i);				
-				insertStacks.setString(2, chest.getID());
+				insertStacks.setString(2, chest.getId(message.serverIP));
 				
 				if(stack != null)
 					insertStacks.setString(3, stack.name);
@@ -99,11 +104,11 @@ public class StockkeeperSQL {
 			}
 			String query = "REPLACE INTO chest(chestid, x, y, z, ip) VALUES (?,?,?,?,?)";
 			PreparedStatement updateChest = con.prepareStatement(query);
-			updateChest.setString(1, chest.getID());
-			updateChest.setInt(2, chest.chest.x);
-			updateChest.setInt(3, chest.chest.y);
-			updateChest.setInt(4, chest.chest.z);
-			updateChest.setString(5, chest.serverIP);
+			updateChest.setString(1, chest.getId(message.serverIP));
+			updateChest.setInt(2, chest.x);
+			updateChest.setInt(3, chest.y);
+			updateChest.setInt(4, chest.z);
+			updateChest.setString(5, message.serverIP);
 			updateChest.executeUpdate();
 			updateChest.close();
 			
@@ -111,7 +116,7 @@ public class StockkeeperSQL {
 		}
 		catch(SQLException e)
 		{
-			LOG.log(Level.WARNING, chest.userName ,e);
+			LOG.log(Level.WARNING, message.userName ,e);
 			
 		}
 	}
@@ -246,24 +251,28 @@ public class StockkeeperSQL {
 		return password;
 	}
 
-	public void makeGroup(MakeGroupMessage message) {
+	public void makeGroup(StockKeeperMessage message) {
 		
+		String groupname = (String)message.getField("groupname");
 		try
 		{
 		con.setAutoCommit(false);
 		String query = "INSERT INTO groups(name) VALUES (?);";
 		PreparedStatement makeGroup = con.prepareStatement(query);
-		makeGroup.setString(1, message.groupname);		
+		makeGroup.setString(1, groupname);		
 		int rowsUpdated =  makeGroup.executeUpdate();
-		query = "INSERT INTO user_group(userid, groupname, grouplevel) VALUES (?,?,?)";
-		PreparedStatement addOwner = con.prepareStatement(query);
-		addOwner.setString(1, message.playerUUID.toString());
-		addOwner.setString(2, message.groupname);
-		addOwner.setInt(3, GROUPOWNER_LEVEL);
-		addOwner.executeUpdate();		
-		con.commit();
+		if(rowsUpdated != 0)
+		{
+			query = "INSERT INTO user_group(userid, groupname, grouplevel) VALUES (?,?,?)";
+			PreparedStatement addOwner = con.prepareStatement(query);
+			addOwner.setString(1, message.playerUUID.toString());
+			addOwner.setString(2, groupname);
+			addOwner.setInt(3, GROUPOWNER_LEVEL);
+			addOwner.executeUpdate();		
+			con.commit();
+			
+		}
 		con.setAutoCommit(true);
-		
 		
 		
 		}
@@ -279,40 +288,46 @@ public class StockkeeperSQL {
 		
 	}
 
-	public int getGroupLevel(InviteGroupMessage message) {
+	public int getGroupLevel(StockKeeperMessage message) {
+		String groupname = (String)message.getField("groupname");
 		int result = -1;
 		try
 		{
 		String query = "SELECT grouplevel FROM user_group WHERE userid = ? AND groupname = ?";
 		PreparedStatement grouplevel = con.prepareStatement(query);
 		grouplevel.setString(1, message.playerUUID.toString());
-		grouplevel.setString(2, message.groupname);
+		grouplevel.setString(2, groupname);
 		result = grouplevel.executeQuery().getInt("grouplevel");
 		}
 		catch (SQLException e) {
-			LOG.log(Level.WARNING, message.username ,e);
+			LOG.log(Level.WARNING, message.userName ,e);
 		}
 		return result;
 		
 	}
 
-	public void addToGroup(InviteGroupMessage message) {
+	public void addToGroup(StockKeeperMessage message) {
+		
+		
 		try
 		{
-		String userid = getUUID(message.username);
+		String username = (String)message.getField("username");
+		String groupname = (String)message.getField("groupname");
+		int grouplevel = (int)message.getField("grouplevel");
+		String userid = getUUID(username);
 		if(userExists(userid))
 		{
 			String query = "INSERT INTO user_group(userid, groupname, grouplevel) VALUES (?,?,?)";
 			PreparedStatement addToGroup = con.prepareStatement(query);
 			addToGroup.setString(1, userid);
-			addToGroup.setString(2, message.groupname);
-			addToGroup.setInt(3, message.grouplevel);
+			addToGroup.setString(2, groupname);
+			addToGroup.setInt(3, grouplevel);
 			addToGroup.executeUpdate();	
 		}
 		}
 		catch(SQLException e)
 		{
-			LOG.log(Level.WARNING, message.username ,e);
+			LOG.log(Level.WARNING, message.userName ,e);
 		}
 		
 	}
@@ -415,21 +430,23 @@ public class StockkeeperSQL {
 		
 	}
 
-	public void changeChestGroup(GroupChangedMessage message) {
+	public void changeChestGroup(StockKeeperMessage message) {
 		try
 		{
-		
-			if(groupExists(message.newGroup))
+			String newGroup = (String)message.getField("newGroup");
+			Position top = (Position)message.getField("top");
+			Position bottom = (Position)message.getField("bottom");
+			if(groupExists(newGroup))
 			{
 				String query = "REPLACE INTO chest_group(groupid,chestid) VALUES(?,?) ";
 				
 				PreparedStatement changeGroup = con.prepareStatement(query);
-				changeGroup.setString(1, message.newGroup);		
-				changeGroup.setString(2, message.getTopID());
+				changeGroup.setString(1, newGroup);		
+				changeGroup.setString(2, bottom.getId(message.serverIP));
 				changeGroup.executeUpdate();			
 				
-				changeGroup.setString(1, message.newGroup);		
-				changeGroup.setString(2, message.getTopID());
+				changeGroup.setString(1, newGroup);		
+				changeGroup.setString(2, top.getId(message.serverIP));
 				changeGroup.executeUpdate();
 			}
 		

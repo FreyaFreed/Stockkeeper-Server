@@ -36,6 +36,11 @@ public class Position implements Serializable {
 	    		);
 	}
 	
+	public String getId(String ip)
+	{
+		return ip +":"+ this.worldName + ":" + this.x + ":" + this.y + ":" + this.z;		
+	}
+	
 	
 	public static final Map<String, String> worldIdtoName = new HashMap<String, String>()
 	 {{

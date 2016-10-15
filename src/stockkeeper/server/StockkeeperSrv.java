@@ -70,19 +70,20 @@ import stockkeeper.network.StockKeeperMessage.MessageType;
 import stockkeeper.network.StockkeeperReturnMessage;
 import stockkeeper.network.checkChestGroupMessage;
 import stockkeeper.sql.StockkeeperSQL;
+import stockkeeper.data.Position;
 import stockkeeper.encryption.EncryptionUtils;;
 
 public class StockkeeperSrv {
 	private static final int MAKEGROUP_LEVEL = 2;
 	private static final int INVITEGROUP_LEVEL = 1;
-	//ServerSocket serverSocket;
+	
 	static StockkeeperSQL SQL =new StockkeeperSQL();
 	static KeyPair keys;
 	static Timer timer = new Timer();
 	static Map<String, Integer> activeInvites = new HashMap<String, Integer>();
 	static Map<UUID, SecretKey> secretKeys = new HashMap<UUID, SecretKey>();
 	public static Logger LOG = Logger.getLogger(StockkeeperSrv.class.getName());
-	//Socket currentOpenSocket;
+	
 
 	public static void main(String[] args) {
 		
@@ -179,7 +180,7 @@ public class StockkeeperSrv {
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
 		case REGISTER:
-			handleRegistration((RegisterMessage)message, returnMessage);
+			handleRegistration(message, returnMessage);
 			break;
 		case MAKEGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
@@ -189,12 +190,12 @@ public class StockkeeperSrv {
 			break;
 		case INVITEGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleInviteGroup((InviteGroupMessage)message, returnMessage);
+				handleInviteGroup(message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 		case CHECKGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleCheckGroup((checkChestGroupMessage)message, returnMessage);
+				handleCheckGroup(message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
@@ -204,7 +205,7 @@ public class StockkeeperSrv {
 			break;
 		case FINDITEM:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleFindItem((FindItemMessage)message, returnMessage);
+				handleFindItem(message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
@@ -223,9 +224,10 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleFindItem(FindItemMessage message, ObjectOutputStream returnMessage) {
+	private static void handleFindItem(StockKeeperMessage message, ObjectOutputStream returnMessage) {
 		
-		FindItemReturnMessage findItem = new FindItemReturnMessage(SQL.findItem(message.itemName));
+		String itemName = (String)message.getField("itemName");
+		FindItemReturnMessage findItem = new FindItemReturnMessage(SQL.findItem(itemName));
 		
 		try {
 			returnMessage.writeObject(new EncryptedMessage(findItem, message.playerUUID, secretKeys.get(message.playerUUID)));
@@ -235,7 +237,7 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleGroupChanged(GroupChangedMessage message, ObjectOutputStream returnMessage) {
+	private static void handleGroupChanged(StockKeeperMessage message, ObjectOutputStream returnMessage) {
 		SQL.changeChestGroup(message);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(new GroupChangedReturn(), message.playerUUID, secretKeys.get(message.playerUUID)));
@@ -245,8 +247,10 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleCheckGroup(checkChestGroupMessage message, ObjectOutputStream returnMessage) {
-		String group = SQL.checkGroup(message.getTopID(), message.getBottomID());
+	private static void handleCheckGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		Position top = (Position)message.getField("top");
+		Position bottom = (Position)message.getField("bottom");
+		String group = SQL.checkGroup(top.getId(message.serverIP), bottom.getId(message.serverIP));
 		ChestGroupReturnMessage checkGroup = new ChestGroupReturnMessage(group);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(checkGroup, message.playerUUID, secretKeys.get(message.playerUUID)));
@@ -257,8 +261,8 @@ public class StockkeeperSrv {
 	}
 	private static void handleChestMessage(StockKeeperMessage message, ObjectOutputStream returnMessage)
 			 {
-		ChestContentsMessage contents = (ChestContentsMessage)message; 
-		SQL.updateChest(contents); 
+		//ChestContentsMessage contents = (ChestContentsMessage)message; 
+		SQL.updateChest(message); 
 		StockkeeperReturnMessage chestContents = new StockkeeperReturnMessage(stockkeeper.network.StockkeeperReturnMessage.MessageType.CHESTCONTENTS);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(chestContents, message.playerUUID, secretKeys.get(message.playerUUID)));
@@ -269,9 +273,10 @@ public class StockkeeperSrv {
 	}
 	private static void handlecountMessage(StockKeeperMessage message, ObjectOutputStream returnMessage)
 			 {
-		CountMessage countMessage = (CountMessage)message;	
-		int result = SQL.countItem(countMessage);
-		CountReturnMessage countReturn = new CountReturnMessage(result, countMessage.itemName);
+		
+		String itemName = (String)message.getField("itemName");
+		int result = SQL.countItem(message);
+		CountReturnMessage countReturn = new CountReturnMessage(result, itemName);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(countReturn, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
@@ -280,9 +285,10 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleInviteGroup(InviteGroupMessage message, ObjectOutputStream returnMessage) {
+	private static void handleInviteGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		int msgGroupLevel = (int)message.getField("grouplevel");
 		int grouplevel =SQL.getGroupLevel(message);
-		if(grouplevel >= INVITEGROUP_LEVEL && grouplevel > message.grouplevel)
+		if(grouplevel >= INVITEGROUP_LEVEL && grouplevel > msgGroupLevel)
 		{
 			SQL.addToGroup(message);
 			try {
@@ -294,7 +300,7 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleMakeGroup(MakeGroupMessage message, ObjectOutputStream returnMessage) {
+	private static void handleMakeGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
 		if(SQL.getUserLevel(message.playerUUID) >= MAKEGROUP_LEVEL)
 		{
 			SQL.makeGroup(message);
@@ -308,23 +314,25 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleRegistration(RegisterMessage message, ObjectOutputStream returnMessage) {
+	private static void handleRegistration(StockKeeperMessage message, ObjectOutputStream returnMessage) {
 		String masterCode = "6d02c658-2806-4b70-9e2d-be1cfed7329e";
-		if(activeInvites.containsKey(message.inviteCode))
+		
+		String inviteCode = (String)message.getField("inviteCode");
+		if(activeInvites.containsKey(inviteCode))
 		{
-			SQL.registerUser(message.playerUUID, message.password, activeInvites.get(message.inviteCode));
+			SQL.registerUser(message.playerUUID, message.password, activeInvites.get(inviteCode));
 			try {
-				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage("", true), message.playerUUID, secretKeys.get(message.playerUUID)));
+				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage(true), message.playerUUID, secretKeys.get(message.playerUUID)));
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		else if(message.inviteCode.equals(masterCode))
+		else if(inviteCode.equals(masterCode))
 		{
 			SQL.registerUser(message.playerUUID, message.password, 5);	
 			try {
-				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage("", true), message.playerUUID, secretKeys.get(message.playerUUID)));
+				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage(true), message.playerUUID, secretKeys.get(message.playerUUID)));
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -333,19 +341,20 @@ public class StockkeeperSrv {
 		else
 		{
 			try {
-				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage("", false), message.playerUUID, secretKeys.get(message.playerUUID)));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage(false).message = "" , message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {				
 				e.printStackTrace();
 			}
 		}
 		
 	}
-	private static void handleInviteMessage(InviteMessage message, ObjectOutputStream returnMessage) {
-		if(SQL.hasInviteLevel(message.playerUUID, message.level))
+	private static void handleInviteMessage(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		
+		int level = (int)message.getField("level");
+		if(SQL.hasInviteLevel(message.playerUUID, level))
 		{
 			final String inviteCode = UUID.randomUUID().toString();
-			activeInvites.put(inviteCode, message.level);
+			activeInvites.put(inviteCode, level);
 			
 			timer.schedule(new TimerTask() {
 				  @Override
