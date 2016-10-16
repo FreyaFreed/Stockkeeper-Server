@@ -184,7 +184,7 @@ public class StockkeeperSrv {
 			break;
 		case MAKEGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleMakeGroup((MakeGroupMessage)message, returnMessage);
+				handleMakeGroup(message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
@@ -193,6 +193,7 @@ public class StockkeeperSrv {
 				handleInviteGroup(message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
+			break;
 		case CHECKGROUP:
 			if(SQL.verifyUser(message.playerUUID, message.password))
 				handleCheckGroup(message, returnMessage);
@@ -201,7 +202,7 @@ public class StockkeeperSrv {
 			break;
 		case GROUPCHANGED:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleGroupChanged((GroupChangedMessage)message, returnMessage);
+				handleGroupChanged(message, returnMessage);
 			break;
 		case FINDITEM:
 			if(SQL.verifyUser(message.playerUUID, message.password))
@@ -248,9 +249,8 @@ public class StockkeeperSrv {
 		
 	}
 	private static void handleCheckGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
-		Position top = (Position)message.getField("top");
-		Position bottom = (Position)message.getField("bottom");
-		String group = SQL.checkGroup(top.getId(message.serverIP), bottom.getId(message.serverIP));
+		
+		String group = SQL.checkGroup(message);
 		ChestGroupReturnMessage checkGroup = new ChestGroupReturnMessage(group);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(checkGroup, message.playerUUID, secretKeys.get(message.playerUUID)));
