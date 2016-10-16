@@ -426,10 +426,10 @@ public class StockkeeperSQL {
 		}
 		catch(SQLException e)
 		{
-			StockkeeperSrv.LOG.warning(e.toString());			
+			StockkeeperSrv.LOG.log(Level.WARNING,"", e);			
 		}
 		//is still the same chest as last time it was updated
-		if(bottomGroup == topGroup || bottomGroup == null)
+		if(bottomGroup == null ||bottomGroup.equals(topGroup))
 			return topGroup;
 		//
 		else
