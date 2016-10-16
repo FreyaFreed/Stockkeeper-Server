@@ -400,7 +400,12 @@ public class StockkeeperSQL {
 		
 	}
 
-	public String checkGroup(String topID, String bottomID) {
+	public String checkGroup(StockKeeperMessage message) {
+		//top.getId(message.serverIP), bottom.getId(message.serverIP)
+		
+		Position top = (Position)message.getField("top");
+		Position bottom = (Position)message.getField("bottom");		
+		
 		String topGroup = null;
 		String bottomGroup = null;
 		try
@@ -408,13 +413,16 @@ public class StockkeeperSQL {
 		String query = "SELECT groupid FROM chest_group WHERE chestid = ?";
 		PreparedStatement checkGroup = con.prepareStatement(query);
 		
-		checkGroup.setString(1, topID);	
+		checkGroup.setString(1, top.getId(message.serverIP));	
 		ResultSet result =  checkGroup.executeQuery();
 		topGroup = result.getString("groupid");
 		
-		PreparedStatement checkbottomGroup = con.prepareStatement(query);
-		checkbottomGroup.setString(1, bottomID);		
-		bottomGroup = checkbottomGroup.executeQuery().getString("groupid");
+		if(bottom != null)	
+		{
+			PreparedStatement checkbottomGroup = con.prepareStatement(query);
+			checkbottomGroup.setString(1, bottom.getId(message.serverIP));		
+			bottomGroup = checkbottomGroup.executeQuery().getString("groupid");
+		}
 		}
 		catch(SQLException e)
 		{
@@ -442,12 +450,16 @@ public class StockkeeperSQL {
 				
 				PreparedStatement changeGroup = con.prepareStatement(query);
 				changeGroup.setString(1, newGroup);		
-				changeGroup.setString(2, bottom.getId(message.serverIP));
+				changeGroup.setString(2, top.getId(message.serverIP));
 				changeGroup.executeUpdate();			
 				
-				changeGroup.setString(1, newGroup);		
-				changeGroup.setString(2, top.getId(message.serverIP));
-				changeGroup.executeUpdate();
+				if(bottom != null)
+				{
+					changeGroup.setString(1, newGroup);		
+					changeGroup.setString(2, bottom.getId(message.serverIP));
+					changeGroup.executeUpdate();
+				}
+
 			}
 		
 		}
