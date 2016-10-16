@@ -12,17 +12,14 @@ CREATE TABLE IF NOT EXISTS chest (
     "userid" TEXT NOT NULL,
     "groupname" TEXT NOT NULL
 , "grouplevel" INTEGER);
-CREATE TABLE IF NOT EXISTS "group" (
-    "name" TEXT PRIMARY KEY NOT NULL
-);
 CREATE TABLE IF NOT EXISTS "groups" (
     "name" TEXT PRIMARY KEY NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "PK" on chest (chestid ASC);
 CREATE TABLE IF NOT EXISTS "chest_group" (
-    "chestid" TEXT NOT NULL,
-    "groupid" TEXT NOT NULL,
-    CONSTRAINT chest_groupid PRIMARY KEY(chestid, groupid)
+    "chestid" TEXT PRIMARY KEY NOT NULL,
+    "groupid" TEXT NOT NULL
+    
 );
 CREATE TABLE IF NOT EXISTS stack (
     "slot" INTEGER NOT NULL,
