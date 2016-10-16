@@ -66,7 +66,7 @@ import stockkeeper.network.MakeGroupReturnMessage;
 import stockkeeper.network.RegisterMessage;
 import stockkeeper.network.RegisterReturnMessage;
 import stockkeeper.network.StockKeeperMessage;
-import stockkeeper.network.StockKeeperMessage.MessageType;
+import stockkeeper.network.MessageType;
 import stockkeeper.network.StockkeeperReturnMessage;
 import stockkeeper.network.checkChestGroupMessage;
 import stockkeeper.sql.StockkeeperSQL;
@@ -228,8 +228,15 @@ public class StockkeeperSrv {
 	private static void handleFindItem(StockKeeperMessage message, ObjectOutputStream returnMessage) {
 		
 		String itemName = (String)message.getField("itemName");
-		FindItemReturnMessage findItem = new FindItemReturnMessage(SQL.findItem(itemName));
-		
+		StockkeeperReturnMessage findItem = new StockkeeperReturnMessage(MessageType.FINDITEM);
+		Object itemResults = SQL.findItem(itemName);
+		if(itemResults != null)
+		{
+			findItem.setField("itemResults", itemResults);
+			findItem.success = true;
+		}
+		else 
+			findItem.success = false;
 		try {
 			returnMessage.writeObject(new EncryptedMessage(findItem, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
@@ -239,9 +246,10 @@ public class StockkeeperSrv {
 		
 	}
 	private static void handleGroupChanged(StockKeeperMessage message, ObjectOutputStream returnMessage) {
-		SQL.changeChestGroup(message);
+		StockkeeperReturnMessage groupChanged = new StockkeeperReturnMessage(MessageType.GROUPCHANGED);
+		groupChanged.success = SQL.changeChestGroup(message);
 		try {
-			returnMessage.writeObject(new EncryptedMessage(new GroupChangedReturn(), message.playerUUID, secretKeys.get(message.playerUUID)));
+			returnMessage.writeObject(new EncryptedMessage(groupChanged, message.playerUUID, secretKeys.get(message.playerUUID)));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
@@ -249,9 +257,16 @@ public class StockkeeperSrv {
 		
 	}
 	private static void handleCheckGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		StockkeeperReturnMessage checkGroup = new StockkeeperReturnMessage(MessageType.CHECKGROUP);
+		String group = SQL.checkGroup(message);	
+		if(group != null)
+		{
+			checkGroup.setField("group", group);
+			checkGroup.success = true;
+		}
+		else
+			checkGroup.success = false;
 		
-		String group = SQL.checkGroup(message);
-		ChestGroupReturnMessage checkGroup = new ChestGroupReturnMessage(group);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(checkGroup, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
@@ -261,9 +276,8 @@ public class StockkeeperSrv {
 	}
 	private static void handleChestMessage(StockKeeperMessage message, ObjectOutputStream returnMessage)
 			 {
-		//ChestContentsMessage contents = (ChestContentsMessage)message; 
-		SQL.updateChest(message); 
-		StockkeeperReturnMessage chestContents = new StockkeeperReturnMessage(stockkeeper.network.StockkeeperReturnMessage.MessageType.CHESTCONTENTS);
+		StockkeeperReturnMessage chestContents = new StockkeeperReturnMessage(MessageType.CHESTCONTENTS);		
+		chestContents.success = SQL.updateChest(message);
 		try {
 			returnMessage.writeObject(new EncryptedMessage(chestContents, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
@@ -273,10 +287,18 @@ public class StockkeeperSrv {
 	}
 	private static void handlecountMessage(StockKeeperMessage message, ObjectOutputStream returnMessage)
 			 {
-		
+		StockkeeperReturnMessage countReturn = new StockkeeperReturnMessage(MessageType.COUNT);
 		String itemName = (String)message.getField("itemName");
 		int result = SQL.countItem(message);
-		CountReturnMessage countReturn = new CountReturnMessage(result, itemName);
+		if(result != -1)
+		{
+			countReturn.setField("result", result);
+			countReturn.setField("itemName", itemName);
+			countReturn.success = true;
+		}
+		else
+			countReturn.success = false;		
+		
 		try {
 			returnMessage.writeObject(new EncryptedMessage(countReturn, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
@@ -286,70 +308,99 @@ public class StockkeeperSrv {
 		
 	}
 	private static void handleInviteGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		StockkeeperReturnMessage inviteGroup = new StockkeeperReturnMessage(MessageType.INVITEGROUP);
 		int msgGroupLevel = (int)message.getField("grouplevel");
 		int grouplevel =SQL.getGroupLevel(message);
 		if(grouplevel >= INVITEGROUP_LEVEL && grouplevel > msgGroupLevel)
 		{
-			SQL.addToGroup(message);
-			try {
-				returnMessage.writeObject(new EncryptedMessage(new InviteGroupReturnMessage(), message.playerUUID, secretKeys.get(message.playerUUID)));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			boolean success = SQL.addToGroup(message);
+			if(success)
+			{
+				inviteGroup.success = true;
+			}
+			else
+			{
+				inviteGroup.success = false;
 			}
 		}
+		else
+		{
+			inviteGroup.success = false;			
+		}
+			try {
+				returnMessage.writeObject(new EncryptedMessage(inviteGroup, message.playerUUID, secretKeys.get(message.playerUUID)));
+			} catch (IOException e) {
+				LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
+			}
+		
+		
 		
 	}
 	private static void handleMakeGroup(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		StockkeeperReturnMessage makeGroup = new StockkeeperReturnMessage(MessageType.MAKEGROUP);
 		if(SQL.getUserLevel(message.playerUUID) >= MAKEGROUP_LEVEL)
 		{
-			SQL.makeGroup(message);
-			try {
-				returnMessage.writeObject(new EncryptedMessage(new MakeGroupReturnMessage(), message.playerUUID, secretKeys.get(message.playerUUID)));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}			
-			
+			if(SQL.makeGroup(message))
+			{
+				makeGroup.success = true;
+			}
+			else
+			{
+				makeGroup.success = false;
+			}
 		}
+		else
+		{
+			makeGroup.success = false;			
+		}
+		try {
+			returnMessage.writeObject(new EncryptedMessage(new MakeGroupReturnMessage(), message.playerUUID, secretKeys.get(message.playerUUID)));
+		} catch (IOException e) {
+			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
+		}			
 		
 	}
 	private static void handleRegistration(StockKeeperMessage message, ObjectOutputStream returnMessage) {
 		String masterCode = "6d02c658-2806-4b70-9e2d-be1cfed7329e";
 		
+		StockkeeperReturnMessage registration = new StockkeeperReturnMessage(MessageType.REGISTER);
 		String inviteCode = (String)message.getField("inviteCode");
 		if(activeInvites.containsKey(inviteCode))
 		{
-			SQL.registerUser(message.playerUUID, message.password, activeInvites.get(inviteCode));
-			try {
-				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage(true), message.playerUUID, secretKeys.get(message.playerUUID)));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			if(SQL.registerUser(message.playerUUID, message.password, activeInvites.get(inviteCode)))
+			{
+				registration.success = true;
+			}
+			else
+			{
+				registration.success = false;				
 			}
 		}
 		else if(inviteCode.equals(masterCode))
 		{
-			SQL.registerUser(message.playerUUID, message.password, 5);	
-			try {
-				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage(true), message.playerUUID, secretKeys.get(message.playerUUID)));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			if(SQL.registerUser(message.playerUUID, message.password, 5))
+			{
+				registration.success = true;
+			}
+			else
+			{
+				registration.success = false;				
 			}
 		}
 		else
 		{
-			try {
-				returnMessage.writeObject(new EncryptedMessage(new RegisterReturnMessage(false).message = "" , message.playerUUID, secretKeys.get(message.playerUUID)));
-			} catch (IOException e) {				
-				e.printStackTrace();
-			}
+			registration.success = false;
+		}
+		try {
+			returnMessage.writeObject(new EncryptedMessage(registration, message.playerUUID, secretKeys.get(message.playerUUID)));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
 		}
 		
 	}
 	private static void handleInviteMessage(StockKeeperMessage message, ObjectOutputStream returnMessage) {
-		
+		StockkeeperReturnMessage inviteMessage = new StockkeeperReturnMessage(MessageType.INVITE);
 		int level = (int)message.getField("level");
 		if(SQL.hasInviteLevel(message.playerUUID, level))
 		{
@@ -362,13 +413,21 @@ public class StockkeeperSrv {
 				    activeInvites.remove(inviteCode);				    
 				  }
 				}, TimeUnit.MINUTES.toMillis(30));
-			try {
-				returnMessage.writeObject(new InviteReturnMessage(inviteCode));
-				LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
-			} catch (IOException e) {			
-				LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
-			}		
+			inviteMessage.setField("inviteCode", inviteCode);
+			inviteMessage.success = true;
+			
 		}
+		else
+		{
+			inviteMessage.success = false;			
+		}
+		
+		try {			
+			returnMessage.writeObject(new EncryptedMessage(inviteMessage, message.playerUUID, secretKeys.get(message.playerUUID)));
+			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
+		} catch (IOException e) {			
+			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
+		}		
 	}
 	
 }

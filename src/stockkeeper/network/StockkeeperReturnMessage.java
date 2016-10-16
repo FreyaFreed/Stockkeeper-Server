@@ -4,19 +4,14 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class StockkeeperReturnMessage implements Serializable {
-	public enum MessageType {
-		CHESTCONTENTS,
-		COUNT, INVITE, REGISTER, CHECKGROUP, FINDITEM, INVALID_PASSWORD, CONNECTION_FAILED, GROUPCHANGED, MAKEGROUP, INVITEGROUP
-
-	}
+public class StockkeeperReturnMessage implements Serializable {	
 	public MessageType messageType;
 	public StockkeeperReturnMessage(MessageType messageType) {
 		super();
 		this.messageType = messageType;
 		fields = new HashMap<String, Object>();
 	}
-	boolean success;
+	public boolean success;
 	public String message;
 private Map<String, Object> fields;
 	

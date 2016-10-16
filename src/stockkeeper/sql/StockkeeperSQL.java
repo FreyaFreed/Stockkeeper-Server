@@ -74,7 +74,7 @@ public class StockkeeperSQL {
 		}
 	}
 	
-	public void updateChest(StockKeeperMessage message)
+	public boolean updateChest(StockKeeperMessage message)
 	{
 		
 		List<Stack> stacks = (List<Stack>)message.getField("stacks");
@@ -111,12 +111,14 @@ public class StockkeeperSQL {
 			updateChest.setString(5, message.serverIP);
 			updateChest.executeUpdate();
 			updateChest.close();
+			return true;
 			
 			 
 		}
 		catch(SQLException e)
-		{
+		{						
 			LOG.log(Level.WARNING, message.userName ,e);
+			return false;
 			
 		}
 	}
@@ -202,7 +204,7 @@ public class StockkeeperSQL {
 		return result;
 	}
 
-	public void registerUser(UUID playerUUID, String password, Integer level) {
+	public boolean registerUser(UUID playerUUID, String password, Integer level) {
 		boolean success = false;
 		try
 		{
@@ -216,12 +218,20 @@ public class StockkeeperSQL {
 		success = (rowsUpdated != 0);
 		
 		if(success)
+		{
 			LOG.info("Succesfully registered user");
+			return success;
 		
+		}
+		else
+		{
+			LOG.info("Failed to register user");		}
+			return false;
 		}
 		catch(SQLException e)
 		{
 			LOG.log(Level.WARNING, playerUUID.toString() ,e);
+			return false;
 		}
 		
 		
@@ -251,7 +261,7 @@ public class StockkeeperSQL {
 		return password;
 	}
 
-	public void makeGroup(StockKeeperMessage message) {
+	public boolean makeGroup(StockKeeperMessage message) {
 		
 		String groupname = (String)message.getField("groupname");
 		try
@@ -270,9 +280,13 @@ public class StockkeeperSQL {
 			addOwner.setInt(3, GROUPOWNER_LEVEL);
 			addOwner.executeUpdate();		
 			con.commit();
+			con.setAutoCommit(true);
+			return true;
 			
 		}
-		con.setAutoCommit(true);
+		else
+			return false;
+		
 		
 		
 		}
@@ -280,9 +294,13 @@ public class StockkeeperSQL {
 			LOG.log(Level.WARNING, message.userName ,e);
 			try{
 			con.rollback();
+			con.setAutoCommit(true);
+			return false;
 			}
 			catch (Exception ex) {
+				
 				LOG.log(Level.WARNING, message.userName ,e);
+				return false;
 			}
 		}
 		
@@ -306,7 +324,7 @@ public class StockkeeperSQL {
 		
 	}
 
-	public void addToGroup(StockKeeperMessage message) {
+	public boolean addToGroup(StockKeeperMessage message) {
 		
 		
 		try
@@ -323,11 +341,15 @@ public class StockkeeperSQL {
 			addToGroup.setString(2, groupname);
 			addToGroup.setInt(3, grouplevel);
 			addToGroup.executeUpdate();	
+			return true;
 		}
+		else
+			return false;
 		}
 		catch(SQLException e)
 		{
 			LOG.log(Level.WARNING, message.userName ,e);
+			return false;
 		}
 		
 	}
@@ -438,7 +460,7 @@ public class StockkeeperSQL {
 		
 	}
 
-	public void changeChestGroup(StockKeeperMessage message) {
+	public boolean changeChestGroup(StockKeeperMessage message) {
 		try
 		{
 			String newGroup = (String)message.getField("newGroup");
@@ -461,11 +483,13 @@ public class StockkeeperSQL {
 				}
 
 			}
+			return true;
 		
 		}
 		catch(SQLException e)
 		{
 			LOG.log(Level.WARNING, message.userName ,e);
+			return false;
 			
 		}
 		

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>Stockkeeper-Srv</groupId>
   <artifactId>Stockkeeper-Srv</artifactId>
-  <version>0.1.3</version>
+  <version>0.1.4</version>
   <name>StockkeeperServer</name>
     <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

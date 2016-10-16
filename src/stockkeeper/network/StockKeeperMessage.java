@@ -7,12 +7,7 @@ import java.util.UUID;
 
 
 public class StockKeeperMessage implements Serializable {
-
-	public enum MessageType {
-		CHESTCONTENTS,
-		COUNT, INVITE, REGISTER, MAKEGROUP, INVITEGROUP, CHECKGROUP, GROUPCHANGED, FINDITEM
-
-	}
+	
 	public MessageType messageType;
 	public UUID playerUUID;
 	public String serverIP;
