@@ -46,29 +46,12 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
-import stockkeeper.network.ChestContentsMessage;
-import stockkeeper.network.ChestGroupReturnMessage;
 import stockkeeper.network.ConnectionFailedMessage;
-import stockkeeper.network.CountMessage;
-import stockkeeper.network.CountReturnMessage;
 import stockkeeper.network.EncryptedMessage;
-import stockkeeper.network.FindItemMessage;
-import stockkeeper.network.FindItemReturnMessage;
-import stockkeeper.network.GroupChangedMessage;
-import stockkeeper.network.GroupChangedReturn;
 import stockkeeper.network.InvalidPasswordMessage;
-import stockkeeper.network.InviteGroupMessage;
-import stockkeeper.network.InviteGroupReturnMessage;
-import stockkeeper.network.InviteMessage;
-import stockkeeper.network.InviteReturnMessage;
-import stockkeeper.network.MakeGroupMessage;
-import stockkeeper.network.MakeGroupReturnMessage;
-import stockkeeper.network.RegisterMessage;
-import stockkeeper.network.RegisterReturnMessage;
 import stockkeeper.network.StockKeeperMessage;
 import stockkeeper.network.MessageType;
 import stockkeeper.network.StockkeeperReturnMessage;
-import stockkeeper.network.checkChestGroupMessage;
 import stockkeeper.sql.StockkeeperSQL;
 import stockkeeper.data.Position;
 import stockkeeper.encryption.EncryptionUtils;;
@@ -175,7 +158,7 @@ public class StockkeeperSrv {
 			break;
 		case INVITE:
 			if(SQL.verifyUser(message.playerUUID, message.password))
-				handleInviteMessage((InviteMessage)message, returnMessage);
+				handleInviteMessage(message, returnMessage);
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
@@ -354,7 +337,7 @@ public class StockkeeperSrv {
 			makeGroup.success = false;			
 		}
 		try {
-			returnMessage.writeObject(new EncryptedMessage(new MakeGroupReturnMessage(), message.playerUUID, secretKeys.get(message.playerUUID)));
+			returnMessage.writeObject(new EncryptedMessage(makeGroup, message.playerUUID, secretKeys.get(message.playerUUID)));
 		} catch (IOException e) {
 			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
 		}			

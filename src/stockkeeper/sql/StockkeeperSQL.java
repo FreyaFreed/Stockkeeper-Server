@@ -34,11 +34,6 @@ import org.sqlite.SQLiteDataSource;
 
 import stockkeeper.data.Position;
 import stockkeeper.data.Stack;
-import stockkeeper.network.ChestContentsMessage;
-import stockkeeper.network.CountMessage;
-import stockkeeper.network.GroupChangedMessage;
-import stockkeeper.network.InviteGroupMessage;
-import stockkeeper.network.MakeGroupMessage;
 import stockkeeper.network.StockKeeperMessage;
 import stockkeeper.server.StockkeeperSrv;
 

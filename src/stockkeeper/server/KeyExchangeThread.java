@@ -1,15 +1,11 @@
 package stockkeeper.server;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyPair;
-import java.security.PublicKey;
 import java.util.Map;
 import java.util.UUID;
 
