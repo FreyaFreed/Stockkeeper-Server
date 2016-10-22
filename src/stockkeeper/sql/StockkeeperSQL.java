@@ -26,6 +26,7 @@ import javax.sql.DataSource;
 import javax.sql.rowset.CachedRowSet;
 
 import org.sqlite.SQLiteConfig.JournalMode;
+import org.sqlite.SQLiteConfig.SynchronousMode;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -77,11 +78,13 @@ public class StockkeeperSQL {
 		try
 		{
 			int i = 0;
+			String query = "REPLACE INTO stack(slot, chestid, itemName, stackSize) VALUES (?,?,?,?)";
+			PreparedStatement insertStacks = con.prepareStatement(query);
 			for(Stack stack : stacks)
 			{
 				
-				String query = "REPLACE INTO stack(slot, chestid, itemName, stackSize) VALUES (?,?,?,?)";
-				PreparedStatement insertStacks = con.prepareStatement(query);
+				
+				
 				insertStacks.setInt(1, i);				
 				insertStacks.setString(2, chest.getId(message.serverIP));
 				
@@ -92,13 +95,16 @@ public class StockkeeperSQL {
 				if(stack != null)
 					insertStacks.setInt(4, stack.size);
 				else
-					insertStacks.setString(4, null);				
-				insertStacks.executeUpdate();
-				insertStacks.close();
+					insertStacks.setString(4, null);
+				insertStacks.addBatch();
+				
+				
 				i++;
 			}
-			String query = "REPLACE INTO chest(chestid, x, y, z, ip) VALUES (?,?,?,?,?)";
-			PreparedStatement updateChest = con.prepareStatement(query);
+			insertStacks.executeBatch();
+			insertStacks.close();
+			String query2 = "REPLACE INTO chest(chestid, x, y, z, ip) VALUES (?,?,?,?,?)";
+			PreparedStatement updateChest = con.prepareStatement(query2);
 			updateChest.setString(1, chest.getId(message.serverIP));
 			updateChest.setInt(2, chest.x);
 			updateChest.setInt(3, chest.y);
@@ -123,7 +129,8 @@ public class StockkeeperSQL {
 		Connection con = null;
 	    try {
 	    	org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
-	        config.setJournalMode(JournalMode.MEMORY);	        
+	        config.setJournalMode(JournalMode.MEMORY);
+	        config.setSynchronous(SynchronousMode.OFF);
 	        con = DriverManager.getConnection("jdbc:sqlite:stockkeeper.db");
 	        config.apply(con);
 	      Class.forName("org.sqlite.JDBC");
