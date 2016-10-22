@@ -30,6 +30,8 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
@@ -59,7 +61,7 @@ import stockkeeper.encryption.EncryptionUtils;;
 public class StockkeeperSrv {
 	private static final int MAKEGROUP_LEVEL = 2;
 	private static final int INVITEGROUP_LEVEL = 1;
-	
+	static double mTime;
 	static StockkeeperSQL SQL =new StockkeeperSQL();
 	static KeyPair keys;
 	static Timer timer = new Timer();
@@ -67,7 +69,6 @@ public class StockkeeperSrv {
 	static Map<UUID, SecretKey> secretKeys = new HashMap<UUID, SecretKey>();
 	public static Logger LOG = Logger.getLogger(StockkeeperSrv.class.getName());
 	
-
 	public static void main(String[] args) {
 		
 		
@@ -91,13 +92,16 @@ public class StockkeeperSrv {
 		
 		KeyExchangeThread keyExchange = new KeyExchangeThread(keys, secretKeys);
 		keyExchange.start();
-		
+		ExecutorService messageHandler = Executors.newFixedThreadPool(10);
 		ServerSocket serverSocket = null;
 		try { 
-			serverSocket = new ServerSocket(55555);			
-		
+			serverSocket = new ServerSocket(55555);				
+			
+
 		while (true) {
-			listen(serverSocket.accept());						
+			Socket socket = serverSocket.accept();
+			messageHandler.submit(new MessageRunnable(socket));
+			
 			
 		}
 		} catch (IOException e) {
@@ -127,7 +131,7 @@ public class StockkeeperSrv {
 			
 		}
 	}
-	private static void connectionFailed(Socket socket) {
+	static void connectionFailed(Socket socket) {
 		
 		try {
 			ObjectOutputStream returnMessage = new ObjectOutputStream(socket.getOutputStream());
@@ -139,7 +143,7 @@ public class StockkeeperSrv {
 		}
 		
 	}
-	private static void handleMessage(Socket socket, StockKeeperMessage message) throws IOException {
+	public static void handleMessage(Socket socket, StockKeeperMessage message) throws IOException {
 		ObjectOutputStream returnMessage = new ObjectOutputStream(socket.getOutputStream());
 		
 		switch(message.messageType)
@@ -253,6 +257,7 @@ public class StockkeeperSrv {
 		try {
 			returnMessage.writeObject(new EncryptedMessage(checkGroup, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
+			
 		} catch (IOException e) {			
 			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
 		}
@@ -261,6 +266,7 @@ public class StockkeeperSrv {
 			 {
 		StockkeeperReturnMessage chestContents = new StockkeeperReturnMessage(MessageType.CHESTCONTENTS);		
 		chestContents.success = SQL.updateChest(message);
+				
 		try {
 			returnMessage.writeObject(new EncryptedMessage(chestContents, message.playerUUID, secretKeys.get(message.playerUUID)));
 			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
