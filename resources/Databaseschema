@@ -26,5 +26,6 @@ CREATE TABLE IF NOT EXISTS stack (
     "chestid" TEXT NOT NULL,
     "itemName" TEXT COLLATE NOCASE,
     "stackSize" INTEGER,
+    "serializedStack" TEXT,
     CONSTRAINT stackid PRIMARY KEY (slot, chestid)
 );

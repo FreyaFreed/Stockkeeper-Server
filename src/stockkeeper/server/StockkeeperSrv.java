@@ -25,6 +25,7 @@ import java.security.cert.CertPathChecker;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -56,6 +57,7 @@ import stockkeeper.network.MessageType;
 import stockkeeper.network.StockkeeperReturnMessage;
 import stockkeeper.sql.StockkeeperSQL;
 import stockkeeper.data.Position;
+import stockkeeper.data.Stack;
 import stockkeeper.encryption.EncryptionUtils;;
 
 public class StockkeeperSrv {
@@ -197,8 +199,30 @@ public class StockkeeperSrv {
 			else
 				handleInvalidPassword(message, returnMessage, socket);
 			break;
+		case COUNTALL:
+			if(SQL.verifyUser(message.playerUUID, message.password))
+				handleCountAll(message, returnMessage);
+			break;
 		}
 		returnMessage.close();
+		
+	}
+	private static void handleCountAll(StockKeeperMessage message, ObjectOutputStream returnMessage) {
+		List<Stack> stacks = SQL.countAll(message);
+		StockkeeperReturnMessage countAll = new StockkeeperReturnMessage(MessageType.COUNTALL);
+		countAll.setField("stacks", stacks);
+		if(stacks.isEmpty())
+			countAll.success = false;
+		else
+			countAll.success = true;
+		
+			
+		try {
+			returnMessage.writeObject(new EncryptedMessage(countAll, message.playerUUID, secretKeys.get(message.playerUUID)));
+			LOG.info("Sent "+ message.messageType.toString() + " to: "  + message.userName);
+		} catch (IOException e) {
+			LOG.warning("Was unable to send "+ message.messageType.toString() + " to: " + message.userName) ;
+		}
 		
 	}
 	private static void handleInvalidPassword(StockKeeperMessage message, ObjectOutputStream returnMessage, Socket socket) throws IOException {

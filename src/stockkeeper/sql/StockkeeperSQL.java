@@ -17,6 +17,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -66,6 +67,37 @@ public class StockkeeperSQL {
 		catch(SQLException e)
 		{
 			return -1;
+			
+		}
+	}
+	
+	public List<Stack> countAll(StockKeeperMessage message)
+	{
+		String itemName = (String)message.getField("itemName");
+		try
+		{
+			//Connection con = getConnection();	
+			String query = "SELECT  itemName,serializedStack, SUM(stackSize) AS total FROM stack WHERE itemName IS NOT NULL GROUP BY itemName";
+			PreparedStatement count = con.prepareStatement(query);
+			//count.setString(1, itemName);
+			//count.setString(2, message.serverIP);
+			ResultSet result = count.executeQuery();
+			List<Stack> stacks = new ArrayList<Stack>();
+			while(result.next())
+			{
+				String itemname = result.getString("itemName");
+				int total = result.getInt("total");
+				String serializedStack = result.getString("serializedStack");
+				Stack stack = new Stack(itemname, total, serializedStack);
+				stacks.add(stack);
+			}
+			
+			return stacks;
+			
+		}
+		catch(SQLException e)
+		{
+			return null;
 			
 		}
 	}
