@@ -78,7 +78,7 @@ public class StockkeeperSQL {
 		try
 		{
 			int i = 0;
-			String query = "REPLACE INTO stack(slot, chestid, itemName, stackSize) VALUES (?,?,?,?)";
+			String query = "REPLACE INTO stack(slot, chestid, itemName, stackSize, serializedStack) VALUES (?,?,?,?,?)";
 			PreparedStatement insertStacks = con.prepareStatement(query);
 			for(Stack stack : stacks)
 			{
@@ -89,13 +89,17 @@ public class StockkeeperSQL {
 				insertStacks.setString(2, chest.getId(message.serverIP));
 				
 				if(stack != null)
+				{
 					insertStacks.setString(3, stack.name);
-				else
-					insertStacks.setString(3, null);
-				if(stack != null)
 					insertStacks.setInt(4, stack.size);
+					insertStacks.setString(5, stack.serializedStack);
+				}
 				else
-					insertStacks.setString(4, null);
+				{
+					insertStacks.setString(3, null);
+					insertStacks.setString(4, null);	
+					insertStacks.setString(5, null);	
+				}
 				insertStacks.addBatch();
 				
 				
